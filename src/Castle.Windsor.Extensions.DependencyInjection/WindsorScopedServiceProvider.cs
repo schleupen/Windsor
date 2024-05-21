@@ -14,6 +14,7 @@
 
 namespace Castle.Windsor.Extensions.DependencyInjection
 {
+	using Castle.MicroKernel;
 	using Castle.MicroKernel.Handlers;
 	using Castle.Windsor;
 	using Castle.Windsor.Extensions.DependencyInjection.Scope;
@@ -99,15 +100,53 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				//this is complicated by the concept of keyed service, because if you are about to resolve WITHOUTH KEY you do not
 				//need to resolve keyed services. Now Keyed services are available only in version 8 but we register with an helper
 				//all registered services so we can know if a service was really registered with keyed service or not.
-				var componentRegistration = container.Kernel.GetHandler(serviceType);
-				if (componentRegistration.ComponentModel.Name.StartsWith(KeyedRegistrationHelper.KeyedRegistrationPrefix))
+				var componentRegistrations = container.Kernel.GetHandlers(serviceType);
+
+				//now since the caller requested a NON Keyed component, we need to skip all keyed components.
+				var realRegistrations = componentRegistrations.Where(x => !x.ComponentModel.Name.StartsWith(KeyedRegistrationHelper.KeyedRegistrationPrefix)).ToList();
+				string registrationName = null;
+				if (realRegistrations.Count == 1) 
 				{
-					//Component was registered as keyed component, so we really need to resolve with null because this is the old interface
-					//so no key is provided.
+					registrationName = realRegistrations[0].ComponentModel.Name;
+				}
+				else if (realRegistrations.Count == 0)
+				{
+					//No component is registered for the interface without key, resolution cannot be done.
+					registrationName = null;
+				}
+				else if (realRegistrations.Count > 1)
+				{
+					//more than one component is registered for the interface without key, we have some ambiguity that is resolved, based on test
+					//found in framework with this rule.
+					//1. Last component win.
+					//2. closed service are preferred over open generic.
+
+					//take first non generic
+					for (int i = realRegistrations.Count - 1; i >= 0; i--)
+					{
+						if (!realRegistrations[i].ComponentModel.Implementation.IsGenericTypeDefinition)
+						{
+							registrationName = realRegistrations[i].ComponentModel.Name;
+							break;
+						}
+					}
+
+					//if we did not find any non generic, take the last one.
+					if (registrationName == null)
+					{
+						registrationName = realRegistrations[realRegistrations.Count - 1].ComponentModel.Name;
+					}
+				}
+
+				if (registrationName == null)
+				{
 					return null;
 				}
-#endif
+				return container.Resolve(registrationName, serviceType);
+#else
+				//no keyed component in previous framework, just resolve.
 				return container.Resolve(serviceType);
+#endif
 			}
 
 			if (serviceType.GetTypeInfo().IsGenericType && serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))

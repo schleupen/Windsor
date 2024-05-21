@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Specification;
 using System;
-using Xunit;
 
 namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 {

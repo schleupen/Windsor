@@ -1,6 +1,6 @@
 ﻿#if NET8_0_OR_GREATER
+using Castle.MicroKernel;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Specification.Fakes;
 using System;
 using System.Linq;
 using System.Threading;
@@ -111,6 +111,21 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 		}
 
 		[Fact]
+		public void Mix_of_keyed_and_not_keyed()
+		{
+			var serviceCollection = GetServiceCollection();
+			serviceCollection.AddSingleton<ITestService, TestService>();
+			serviceCollection.AddKeyedSingleton<ITestService, AnotherTestService>("bla");
+
+			_serviceProvider = BuildServiceProvider(serviceCollection);
+
+			//can resolve the non-keyed
+			var nonKeyed = _serviceProvider.GetRequiredService<ITestService>();
+			Assert.NotNull(nonKeyed);
+			Assert.IsType<TestService>(nonKeyed);
+		}
+
+		[Fact]
 		public void Scoped_service_resolved_outside_scope_in_another_thread()
 		{
 			var serviceCollection = GetServiceCollection();
@@ -167,7 +182,8 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 			ITestService resolvedInThread = null;
 			async Task ExecuteAsync()
 			{
-				while (!stop)
+				DateTime start = DateTime.UtcNow;
+				while (!stop && DateTime.UtcNow.Subtract(start).TotalSeconds < 10)
 				{
 					await Task.Delay(100);
 					if (shouldResolve)
@@ -178,10 +194,7 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 				}
 			}
 			//fire and forget
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 			var task = ExecuteAsync();
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
 			await Task.Delay(500);
 
 			var serviceCollection = GetServiceCollection();
@@ -353,7 +366,6 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 			Assert.True(task.Result);
 		}
 
-
 		protected override void Dispose(bool disposing)
 		{
 			base.Dispose(disposing);
@@ -364,16 +376,12 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 		}
 	}
 
-	internal class TestService : ITestService
-	{
-	}
+	internal class TestService : ITestService;
 
-	internal class AnotherTestService : ITestService
-	{
-	}
+	internal class AnotherTestService : ITestService;
 
-	internal interface ITestService
-	{
-	}
+	internal class ThirdTestService : ITestService;
+
+	internal interface ITestService;
 }
 #endif

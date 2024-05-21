@@ -53,6 +53,29 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 			GC.SuppressFinalize(this);
 		}
 
+		///// <summary>
+		///// To verify when a single test failed, open the corresponding test in dotnet/runtime repository,
+		///// then copy the test here, change name and execute with debugging etc etc.
+		///// This helps because source link support seems to be not to easy to use from the test runner
+		///// and this tricks makes everything really simpler.
+		///// </summary>
+		//[Fact]
+		//public void ClosedServicesPreferredOverOpenGenericServices_custom()
+		//{
+		//	// Arrange
+		//	var collection = new TestServiceCollection();
+		//	collection.AddTransient(typeof(IFakeOpenGenericService<PocoClass>), typeof(FakeService));
+		//	collection.AddTransient(typeof(IFakeOpenGenericService<>), typeof(FakeOpenGenericService<>));
+		//	collection.AddSingleton<PocoClass>();
+		//	var provider = CreateServiceProvider(collection);
+
+		//	// Act
+		//	var service = provider.GetService<IFakeOpenGenericService<PocoClass>>();
+
+		//	// Assert
+		//	Assert.IsType<FakeService>(service);
+		//}
+
 #if NET6_0_OR_GREATER
 #endif
 
