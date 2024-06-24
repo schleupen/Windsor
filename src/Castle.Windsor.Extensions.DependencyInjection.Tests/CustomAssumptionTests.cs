@@ -1,5 +1,6 @@
 ﻿#if NET8_0_OR_GREATER
 using Castle.MicroKernel;
+using Castle.MicroKernel.Registration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
@@ -364,6 +365,52 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 			});
 
 			Assert.True(task.Result);
+		}
+
+		[Fact]
+		public void Resolve_order_in_castle()
+		{
+			var serviceCollection = GetServiceCollection();
+			_factory = new WindsorServiceProviderFactory();
+			_container = _factory.CreateBuilder(serviceCollection);
+
+			_container.Register(
+				Component.For<ITestService>().ImplementedBy<TestService>()
+				, Component.For<ITestService>().ImplementedBy<AnotherTestService>());
+
+			var provider = _factory.CreateServiceProvider(_container);
+
+			var resolvedWithCastle = _container.Resolve<ITestService>();
+			var resolvedWithProvider = provider.GetRequiredService<ITestService>();
+
+			//SUper important: Assumption for resolve multiple services registerd with the same
+			//interface is different: castle resolves the first, Microsoft DI require you to
+			//resolve the latest.
+			Assert.IsType<TestService>(resolvedWithCastle);
+			Assert.IsType<AnotherTestService>(resolvedWithProvider);
+		}
+
+		[Fact]
+		public void Resolve_order_in_castle_with_is_default()
+		{
+			var serviceCollection = GetServiceCollection();
+			_factory = new WindsorServiceProviderFactory();
+			_container = _factory.CreateBuilder(serviceCollection);
+
+			_container.Register(
+				Component.For<ITestService>().ImplementedBy<TestService>().IsDefault()
+				, Component.For<ITestService>().ImplementedBy<AnotherTestService>());
+
+			var provider = _factory.CreateServiceProvider(_container);
+
+			var resolvedWithCastle = _container.Resolve<ITestService>();
+			var resolvedWithProvider = provider.GetRequiredService<ITestService>();
+
+			//SUper important: Assumption for resolve multiple services registerd with the same
+			//interface is different: castle resolves the first, Microsoft DI require you to
+			//resolve the latest.
+			Assert.IsType<TestService>(resolvedWithCastle);
+			Assert.IsType<TestService>(resolvedWithProvider);
 		}
 
 		protected override void Dispose(bool disposing)

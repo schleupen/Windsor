@@ -14,7 +14,6 @@
 
 namespace Castle.Windsor.Extensions.DependencyInjection
 {
-	using Castle.MicroKernel;
 	using Castle.MicroKernel.Handlers;
 	using Castle.Windsor;
 	using Castle.Windsor.Extensions.DependencyInjection.Scope;
@@ -96,7 +95,6 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 		{
 			if (container.Kernel.HasComponent(serviceType))
 			{
-#if NET8_0_OR_GREATER
 				//this is complicated by the concept of keyed service, because if you are about to resolve WITHOUTH KEY you do not
 				//need to resolve keyed services. Now Keyed services are available only in version 8 but we register with an helper
 				//all registered services so we can know if a service was really registered with keyed service or not.
@@ -105,7 +103,7 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				//now since the caller requested a NON Keyed component, we need to skip all keyed components.
 				var realRegistrations = componentRegistrations.Where(x => !x.ComponentModel.Name.StartsWith(KeyedRegistrationHelper.KeyedRegistrationPrefix)).ToList();
 				string registrationName = null;
-				if (realRegistrations.Count == 1) 
+				if (realRegistrations.Count == 1)
 				{
 					registrationName = realRegistrations[0].ComponentModel.Name;
 				}
@@ -116,25 +114,39 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				}
 				else if (realRegistrations.Count > 1)
 				{
-					//more than one component is registered for the interface without key, we have some ambiguity that is resolved, based on test
-					//found in framework with this rule.
-					//1. Last component win.
-					//2. closed service are preferred over open generic.
+					//Need to honor IsDefault for castle registrations.
+					var isDefaultRegistration = realRegistrations
+						.FirstOrDefault(dh => dh.ComponentModel.ExtendedProperties.Any(ComponentIsDefault));
 
-					//take first non generic
-					for (int i = realRegistrations.Count - 1; i >= 0; i--)
+					//Remember that castle has a specific order of resolution, if someone registered something in castle with
+					//IsDefault() it Must be honored.
+					if (isDefaultRegistration != null)
 					{
-						if (!realRegistrations[i].ComponentModel.Implementation.IsGenericTypeDefinition)
-						{
-							registrationName = realRegistrations[i].ComponentModel.Name;
-							break;
-						}
+						registrationName = isDefaultRegistration.ComponentModel.Name;
 					}
-
-					//if we did not find any non generic, take the last one.
-					if (registrationName == null)
+					else
 					{
-						registrationName = realRegistrations[realRegistrations.Count - 1].ComponentModel.Name;
+						//more than one component is registered for the interface without key, we have some ambiguity that is resolved, based on test
+						//found in framework with this rule. In this situation we do not use the same rule of Castle where the first service win but
+						//we use the framework rule that:
+						//1. Last component win.
+						//2. closed service are preferred over open generic.
+
+						//take first non generic
+						for (int i = realRegistrations.Count - 1; i >= 0; i--)
+						{
+							if (!realRegistrations[i].ComponentModel.Implementation.IsGenericTypeDefinition)
+							{
+								registrationName = realRegistrations[i].ComponentModel.Name;
+								break;
+							}
+						}
+
+						//if we did not find any non generic, take the last one.
+						if (registrationName == null)
+						{
+							registrationName = realRegistrations[realRegistrations.Count - 1].ComponentModel.Name;
+						}
 					}
 				}
 
@@ -143,10 +155,6 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 					return null;
 				}
 				return container.Resolve(registrationName, serviceType);
-#else
-				//no keyed component in previous framework, just resolve.
-				return container.Resolve(serviceType);
-#endif
 			}
 
 			if (serviceType.GetTypeInfo().IsGenericType && serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
@@ -195,6 +203,28 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 			}
 
 			return container.Resolve(serviceType);
+		}
+
+		private static bool ComponentIsDefault(KeyValuePair<object, object> property)
+		{
+			if (!Core.Internal.Constants.DefaultComponentForServiceFilter.Equals(property.Key))
+			{
+				//not the property we are looking for
+				return false;
+			}
+
+			if (property.Value is bool boolValue)
+			{
+				return boolValue;
+			}
+
+			if (property.Value is Predicate<Type> predicate)
+			{
+				//this is a method info that we can invoke to get the value.
+				return predicate(null);
+			}
+
+			return false;
 		}
 
 #if NET6_0_OR_GREATER

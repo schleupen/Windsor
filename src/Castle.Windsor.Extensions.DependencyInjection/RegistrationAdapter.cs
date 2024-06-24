@@ -66,8 +66,7 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				throw new System.ArgumentException("Unsupported ServiceDescriptor");
 			}
 #endif
-			return ResolveLifestyle(registration, service)
-				.IsDefault();
+			return ResolveLifestyle(registration, service);
 		}
 
 		public static IRegistration FromServiceDescriptor(
@@ -127,8 +126,7 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				registration = UsingImplementation(registration, service);
 			}
 #endif
-			return ResolveLifestyle(registration, service)
-				.IsDefault();
+			return ResolveLifestyle(registration, service);
 		}
 
 		public static string OriginalComponentName(string uniqueComponentName)
