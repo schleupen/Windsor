@@ -14,6 +14,7 @@
 
 namespace Castle.Windsor.Extensions.DependencyInjection
 {
+	using Castle.Core.Logging;
 	using Castle.MicroKernel.Handlers;
 	using Castle.Windsor;
 	using Castle.Windsor.Extensions.DependencyInjection.Scope;
@@ -28,18 +29,24 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 	, IServiceProviderIsService
 #endif
 #if NET8_0_OR_GREATER
-		, IKeyedServiceProvider, IServiceProviderIsKeyedService
+	, IKeyedServiceProvider, IServiceProviderIsKeyedService
 #endif
 	{
 		private readonly ExtensionContainerScopeBase scope;
 		private bool disposing;
-
+		private ILogger _logger = NullLogger.Instance;
 		private readonly IWindsorContainer container;
 
 		public WindsorScopedServiceProvider(IWindsorContainer container)
 		{
 			this.container = container;
 			scope = ExtensionContainerScopeCache.Current;
+
+			if (container.Kernel.HasComponent(typeof(ILoggerFactory)))
+			{
+				var loggerFactory = container.Resolve<ILoggerFactory>();
+				_logger = loggerFactory.Create(typeof(WindsorScopedServiceProvider));
+			}
 		}
 
 		public object GetService(Type serviceType)
@@ -69,7 +76,6 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 		}
 
 #endif
-
 		public object GetRequiredService(Type serviceType)
 		{
 			using (_ = new ForcedScope(scope))
@@ -114,18 +120,32 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				}
 				else if (realRegistrations.Count > 1)
 				{
-					//Need to honor IsDefault for castle registrations.
-					var isDefaultRegistration = realRegistrations
-						.FirstOrDefault(dh => dh.ComponentModel.ExtendedProperties.Any(ComponentIsDefault));
+					//ok we have a big problem, we have multiple registration and different semantic, because
+					//Microsoft.DI wants the latest registered service to win
+					//Caste instead wants the first registered service to win.
 
-					//Remember that castle has a specific order of resolution, if someone registered something in castle with
-					//IsDefault() it Must be honored.
-					if (isDefaultRegistration != null)
+					//how can we live with this to have a MINIMUM (never zero) impact on everything that registers things?
+					//we need to determine who registered the components.
+					var registeredByMicrosoftDi = realRegistrations.Any(r => r.ComponentModel.ExtendedProperties.Any(ep => RegistrationAdapter.RegistrationKeyExtendedPropertyKey.Equals(ep.Key)));
+
+					if (!registeredByMicrosoftDi)
 					{
-						registrationName = isDefaultRegistration.ComponentModel.Name;
+						if (_logger.IsDebugEnabled)
+						{
+							_logger.Debug($@"Multiple components registered for service {serviceType.FullName} All services {string.Join(",", realRegistrations.Select(r => r.ComponentModel.Implementation.Name))}");
+						}
+
+						//ok we are in a situation where no component was registered through the adapter, this is the situatino of a component
+						//registered purely in castle (this should mean that the user want to use castle semantic).
+						//let the standard castle rules apply.
+						return container.Resolve(serviceType);
 					}
 					else
 					{
+						//If we are here at least one of the component was registered throuh Microsoft.DI, this means that the code that regiestered
+						//the component want to use the semantic of Microsoft.DI. This means that we need to use different set of rules.
+
+						//RULES:
 						//more than one component is registered for the interface without key, we have some ambiguity that is resolved, based on test
 						//found in framework with this rule. In this situation we do not use the same rule of Castle where the first service win but
 						//we use the framework rule that:
@@ -147,6 +167,12 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 						{
 							registrationName = realRegistrations[realRegistrations.Count - 1].ComponentModel.Name;
 						}
+					}
+
+					if (_logger.IsDebugEnabled)
+					{
+						_logger.Debug($@"Multiple components registered for service {serviceType.FullName}. Selected component {registrationName}
+all services {string.Join(",", realRegistrations.Select(r => r.ComponentModel.Implementation.Name))}");
 					}
 				}
 

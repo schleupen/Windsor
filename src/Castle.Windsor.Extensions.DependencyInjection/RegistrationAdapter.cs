@@ -21,6 +21,13 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 
 	internal static class RegistrationAdapter
 	{
+		/// <summary>
+		/// This is a constants that is used as key in the extended properties of a component
+		/// when it is registered through RegistrationAdapter. This allows to understand which
+		/// is the best semantic to use when resolving the component.
+		/// </summary>
+		internal static string RegistrationKeyExtendedPropertyKey = "microsoft-di-registered";
+
 		public static IRegistration FromOpenGenericServiceDescriptor(
 			Microsoft.Extensions.DependencyInjection.ServiceDescriptor service,
 			IWindsorContainer windsorContainer)
@@ -66,7 +73,11 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				throw new System.ArgumentException("Unsupported ServiceDescriptor");
 			}
 #endif
-			return ResolveLifestyle(registration, service);
+			//Extended properties allows to understand when the service was registered through the adapter
+			//and IsDefault is needed to change the semantic of the resolution, LAST registered service win.
+			return ResolveLifestyle(registration, service)
+				.ExtendedProperties(RegistrationKeyExtendedPropertyKey)
+				.IsDefault();
 		}
 
 		public static IRegistration FromServiceDescriptor(
@@ -126,7 +137,9 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 				registration = UsingImplementation(registration, service);
 			}
 #endif
-			return ResolveLifestyle(registration, service);
+			return ResolveLifestyle(registration, service)
+				.ExtendedProperties(RegistrationKeyExtendedPropertyKey)
+				.IsDefault();
 		}
 
 		public static string OriginalComponentName(string uniqueComponentName)

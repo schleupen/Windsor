@@ -371,9 +371,36 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 		public void Resolve_order_in_castle()
 		{
 			var serviceCollection = GetServiceCollection();
+			serviceCollection.AddSingleton<ITestService, TestService>();
+			serviceCollection.AddSingleton<ITestService, AnotherTestService>();
+			var provider = BuildServiceProvider(serviceCollection);
+
+
+			var castleContainer = new WindsorContainer();
+			castleContainer.Register(
+				Component.For<ITestService>().ImplementedBy<TestService>()
+				, Component.For<ITestService>().ImplementedBy<AnotherTestService>());
+
+			var resolvedWithCastle = castleContainer.Resolve<ITestService>();
+			var resolvedWithProvider = provider.GetRequiredService<ITestService>();
+
+			//SUper important: Assumption for resolve multiple services registerd with the same
+			//interface is different: castle resolves the first, Microsoft DI require you to
+			//resolve the latest.
+			Assert.IsType<TestService>(resolvedWithCastle);
+			Assert.IsType<AnotherTestService>(resolvedWithProvider);
+		}
+
+		[Fact]
+		public void If_we_register_through_container_resolution_is_castle()
+		{
+			var serviceCollection = GetServiceCollection();
 			_factory = new WindsorServiceProviderFactory();
 			_container = _factory.CreateBuilder(serviceCollection);
 
+			//We are recording component with castle, it is not important that we resolve
+			//with castle or with the adapter, we use castle rules because who registered
+			//the components wants probably castle semantic.
 			_container.Register(
 				Component.For<ITestService>().ImplementedBy<TestService>()
 				, Component.For<ITestService>().ImplementedBy<AnotherTestService>());
@@ -387,6 +414,26 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 			//interface is different: castle resolves the first, Microsoft DI require you to
 			//resolve the latest.
 			Assert.IsType<TestService>(resolvedWithCastle);
+			Assert.IsType<TestService>(resolvedWithProvider);
+		}
+
+		[Fact]
+		public void If_we_register_through_adapter_resolution_is_microsoft()
+		{
+			var serviceCollection = GetServiceCollection();
+			serviceCollection.AddSingleton<ITestService, TestService>();
+			serviceCollection.AddSingleton<ITestService, AnotherTestService>();
+			_factory = new WindsorServiceProviderFactory();
+			_container = _factory.CreateBuilder(serviceCollection);
+			var provider = _factory.CreateServiceProvider(_container);
+
+			var resolvedWithCastle = _container.Resolve<ITestService>();
+			var resolvedWithProvider = provider.GetRequiredService<ITestService>();
+
+			//SUper important: Assumption for resolve multiple services registerd with the same
+			//interface is different: castle resolves the first, Microsoft DI require you to
+			//resolve the latest.
+			Assert.IsType<AnotherTestService>(resolvedWithCastle);
 			Assert.IsType<AnotherTestService>(resolvedWithProvider);
 		}
 
@@ -398,7 +445,9 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 			_container = _factory.CreateBuilder(serviceCollection);
 
 			_container.Register(
-				Component.For<ITestService>().ImplementedBy<TestService>().IsDefault()
+				Component.For<ITestService>().ImplementedBy<TestService>()
+					.IsDefault()
+					.ExtendedProperties(new Property("porcodio", "porcamadonna"))
 				, Component.For<ITestService>().ImplementedBy<AnotherTestService>());
 
 			var provider = _factory.CreateServiceProvider(_container);
