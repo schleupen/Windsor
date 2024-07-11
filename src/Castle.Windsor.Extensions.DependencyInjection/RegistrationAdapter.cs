@@ -216,7 +216,6 @@ if (service.ImplementationType != null)
 		{
 			return registration.UsingFactoryMethod((kernel) =>
 			{
-				//TODO: We should register a factory in castle that in turns call the implementation factory??
 				var serviceProvider = kernel.Resolve<System.IServiceProvider>();
 #if NET8_0_OR_GREATER
 				if (service.IsKeyedService)
@@ -229,7 +228,6 @@ if (service.ImplementationType != null)
 				}
 #else
 				return service.ImplementationFactory(serviceProvider) as TService;
-				
 #endif
 			});
 		}

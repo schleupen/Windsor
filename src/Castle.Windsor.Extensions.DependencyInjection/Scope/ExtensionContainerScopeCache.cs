@@ -26,7 +26,7 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Scope
 		internal static ExtensionContainerScopeBase Current
 		{
 			// AysncLocal can be null in some cases (like Threadpool.UnsafeQueueUserWorkItem)
-			get => current.Value; // ?? throw new InvalidOperationException("No scope available. Did you forget to call IServiceScopeFactory.CreateScope()?");
+			get => current.Value;
 			set => current.Value = value;
 		}
 	}

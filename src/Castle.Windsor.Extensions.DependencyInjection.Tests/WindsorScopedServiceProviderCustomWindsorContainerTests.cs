@@ -21,6 +21,14 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 	using Microsoft.Extensions.DependencyInjection.Specification.Fakes;
 	using Xunit;
 
+	/// <summary>
+	/// This test inherits from a test class of the framework that contains a set of base tests to verify various assumption
+	/// that must be satisfied by DependencyInjection.
+	/// To debug a single test, open the corresponding test in dotnet/runtime repository,
+	/// then copy the test here, change name and execute with debugging etc etc.
+	/// This helps because source link support seems to be not to easy to use from the test runner
+	/// and this tricks makes everything really simpler.
+	/// </summary>
 	public class WindsorScopedServiceProviderCustomWindsorContainerTests : SkippableDependencyInjectionSpecificationTests, IDisposable
 	{
 		private bool _disposedValue;
@@ -52,33 +60,5 @@ namespace Castle.Windsor.Extensions.DependencyInjection.Tests
 			Dispose(disposing: true);
 			GC.SuppressFinalize(this);
 		}
-
-		///// <summary>
-		///// To verify when a single test failed, open the corresponding test in dotnet/runtime repository,
-		///// then copy the test here, change name and execute with debugging etc etc.
-		///// This helps because source link support seems to be not to easy to use from the test runner
-		///// and this tricks makes everything really simpler.
-		///// </summary>
-		//[Fact]
-		//public void ClosedServicesPreferredOverOpenGenericServices_custom()
-		//{
-		//	// Arrange
-		//	var collection = new TestServiceCollection();
-		//	collection.AddTransient(typeof(IFakeOpenGenericService<PocoClass>), typeof(FakeService));
-		//	collection.AddTransient(typeof(IFakeOpenGenericService<>), typeof(FakeOpenGenericService<>));
-		//	collection.AddSingleton<PocoClass>();
-		//	var provider = CreateServiceProvider(collection);
-
-		//	// Act
-		//	var service = provider.GetService<IFakeOpenGenericService<PocoClass>>();
-
-		//	// Assert
-		//	Assert.IsType<FakeService>(service);
-		//}
-
-#if NET6_0_OR_GREATER
-#endif
-
 	}
-
 }

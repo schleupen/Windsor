@@ -16,7 +16,6 @@
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AssemblyName>Castle.Windsor.Extensions.DependencyInjection</AssemblyName>
 		<RootNamespace>Castle.Windsor.Extensions.DependencyInjection</RootNamespace>
-		<RootNamespace>Castle.Windsor.Extensions.DependencyInjection</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
