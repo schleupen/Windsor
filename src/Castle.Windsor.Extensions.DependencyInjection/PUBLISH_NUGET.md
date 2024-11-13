@@ -10,6 +10,10 @@
 set APPVEYOR_BUILD_VERSION=X.X.X-beta000X
 ```
 
+```powershell
+$env:APPVEYOR_BUILD_VERSION = "X.X.X-beta000X"
+```
+
 - Launch the build script command:
 
 ```bash

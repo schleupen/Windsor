@@ -94,7 +94,9 @@ namespace Castle.Windsor.Extensions.DependencyInjection
 			var disposableScope = scope as IDisposable;
 			disposableScope?.Dispose();
 			// disping the container here is questionable... what if I want to create another IServiceProvider form the factory?
-			container.Dispose();
+			// we have also another consideration. When we use orleans we find that orleans dispose the Scoped service provider and
+			// since we have a single container, we cannot dispose here. The global container must be disposed from external code.
+			// container.Dispose();
 		}
 
 		private object ResolveInstanceOrNull(Type serviceType, bool isOptional)
